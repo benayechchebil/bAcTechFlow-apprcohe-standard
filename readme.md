@@ -18,7 +18,7 @@ Le projet est structuré de manière modulaire pour respecter les principes de s
 
 Pour comprendre les enjeux métier, l'architecture technique et les cas d'usage de l'application, une présentation complète est disponible dans le dossier `docs/` :
 
-*   [Télécharger la présentation au format PDF](./docs/presentation.pdf) *(Recommandé pour une lecture rapide directement sur GitHub)*
+*   [Télécharger la présentation au format PDF](./docs/presentation.pdf) 
 *   [Télécharger la présentation au format PowerPoint (PPTX)](./docs/presentation.pptx)
 
 ---
