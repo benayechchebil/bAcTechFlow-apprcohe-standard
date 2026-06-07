@@ -1,0 +1,1425 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>bAcTechFlow - Tableau de Bord Industriel</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --danger: #dc2626;
+            --warning: #f59e0b;
+            --success: #16a34a;
+            --dark: #1e293b;
+            --gray: #64748b;
+            --light: #f1f5f9;
+            --card-bg: #ffffff;
+            --border: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--light);
+            color: var(--dark);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--dark);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .header .logo { font-size: 2rem; }
+
+        .status-bar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-online {
+            background: rgba(22, 163, 74, 0.2);
+            color: var(--success);
+            border: 1px solid var(--success);
+        }
+
+        .status-offline {
+            background: rgba(220, 38, 38, 0.2);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .pulse {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 1.5rem;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .grid-4 { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+        .grid-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+        .grid-1 { grid-template-columns: 1fr; }
+
+        /* Cards */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .card-subtitle {
+            font-size: 0.875rem;
+            color: var(--gray);
+            margin-top: 0.25rem;
+        }
+
+        .card-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .icon-blue { background: rgba(37, 99, 235, 0.1); color: var(--primary); }
+        .icon-red { background: rgba(220, 38, 38, 0.1); color: var(--danger); }
+        .icon-orange { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .icon-green { background: rgba(22, 163, 74, 0.1); color: var(--success); }
+
+        /* Machine Cards */
+        .machine-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1rem;
+        }
+
+        .machine-card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 2px solid var(--border);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .machine-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            transition: background 0.3s;
+        }
+
+        .machine-card.running::before { background: var(--success); }
+        .machine-card.warning::before { background: var(--warning); }
+        .machine-card.error::before { background: var(--danger); }
+
+        .machine-card:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15);
+        }
+
+        .machine-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .machine-id {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--dark);
+        }
+
+        .machine-atelier {
+            font-size: 0.75rem;
+            color: var(--gray);
+            background: var(--light);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .machine-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-running { background: rgba(22, 163, 74, 0.15); color: var(--success); }
+        .status-warning { background: rgba(245, 158, 11, 0.15); color: var(--warning); }
+        .status-error { background: rgba(220, 38, 38, 0.15); color: var(--danger); }
+
+        .machine-metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .metric {
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--light);
+            border-radius: 8px;
+        }
+
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-top: 0.25rem;
+        }
+
+        .metric-unit {
+            font-size: 0.625rem;
+            color: var(--gray);
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th {
+            background: var(--light);
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--gray);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        tr:hover td {
+            background: rgba(37, 99, 235, 0.03);
+        }
+
+        .timestamp {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--gray);
+        }
+
+        /* Alert Banner */
+        .alert-banner {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .alert-banner.show { display: flex; }
+
+        .alert-banner.error {
+            background: rgba(220, 38, 38, 0.1);
+            border-color: var(--danger);
+        }
+
+        /* Filtres */
+        .filters-bar {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            flex-wrap: wrap;
+            padding: 1rem 1.5rem;
+            background: var(--card-bg);
+            border-bottom: 1px solid var(--border);
+            margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+            padding: 1rem 1.5rem;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .filter-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--gray);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .filter-select {
+            padding: 0.5rem 2rem 0.5rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: white;
+            color: var(--dark);
+            font-size: 0.875rem;
+            cursor: pointer;
+            min-width: 150px;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+        }
+
+        .filter-select:hover {
+            border-color: var(--primary);
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .filter-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            background: var(--primary);
+            color: white;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-badge:hover {
+            background: #1d4ed8;
+        }
+
+        .filter-badge .remove {
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .active-filters {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .clear-filters {
+            padding: 0.5rem 1rem;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--gray);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .clear-filters:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .machine-card.hidden {
+            display: none;
+        }
+
+        .stats-counter {
+            font-size: 0.875rem;
+            color: var(--gray);
+            margin-left: auto;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-4 { grid-template-columns: 1fr; }
+            .grid-2 { grid-template-columns: 1fr; }
+            .machine-metrics { grid-template-columns: 1fr; }
+            .header { flex-direction: column; gap: 1rem; text-align: center; }
+            .filters-bar { flex-direction: column; align-items: stretch; }
+            .stats-counter { margin-left: 0; }
+        }
+    </style>
+    <!-- Librairie SignalR (OBLIGATOIRE avant d'utiliser window.signalR) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <h1>
+            <span class="logo">🏭</span>
+            bAcTechFlow - Tableau de Bord
+        </h1>
+        <div class="status-bar">
+            <div class="status-badge status-online" id="connectionStatus">
+                <span class="pulse"></span>
+                <span id="connectionText">Connecté au serveur</span>
+            </div>
+            <span id="lastUpdate" style="font-size: 0.875rem; color: #94a3b8;">--:--:--</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Alert Banner -->
+        <div class="alert-banner" id="alertBanner">
+            <span style="font-size: 1.25rem;">⚠️</span>
+            <div>
+                <strong id="alertTitle">Alerte</strong>
+                <p id="alertMessage" style="margin: 0; font-size: 0.875rem;">Message d'alerte</p>
+            </div>
+        </div>
+
+        <!-- Filtres -->
+        <div class="card" style="margin-bottom: 1.5rem; padding: 0;">
+            <div class="filters-bar">
+                <div class="filter-group">
+                    <label class="filter-label">Usine</label>
+                    <select class="filter-select" id="filterUsine">
+                        <option value="">Toutes les usines</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Atelier</label>
+                    <select class="filter-select" id="filterAtelier">
+                        <option value="">Tous les ateliers</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Machine</label>
+                    <select class="filter-select" id="filterMachine">
+                        <option value="">Toutes les machines</option>
+                    </select>
+                </div>
+                <div class="active-filters" id="activeFilters"></div>
+                <button class="clear-filters" id="clearFilters" style="display: none;">
+                    ❌ Réinitialiser
+                </button>
+                <div class="stats-counter" id="filterStats">
+                    Affichage : <strong id="visibleCount">0</strong> / <span id="totalCount">0</span> machines
+                </div>
+            </div>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-4">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Machines Actives</div>
+                        <div class="card-value" id="totalMachines">0</div>
+                        <div class="card-subtitle">sur <span id="totalMachinesAll">0</span> machines</div>
+                    </div>
+                    <div class="card-icon icon-blue">⚙️</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Température Moyenne</div>
+                        <div class="card-value" id="avgTemp">--</div>
+                        <div class="card-subtitle">°Celsius</div>
+                    </div>
+                    <div class="card-icon icon-red">🌡️</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">RPM Moyen</div>
+                        <div class="card-value" id="avgRpm">--</div>
+                        <div class="card-subtitle">tours/min</div>
+                    </div>
+                    <div class="card-icon icon-orange">⚡</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">Production Totale</div>
+                        <div class="card-value" id="totalProduction">--</div>
+                        <div class="card-subtitle">mètres</div>
+                    </div>
+                    <div class="card-icon icon-green">📏</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Machines Grid -->
+        <div class="grid grid-1">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Machines en Temps Réel</div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <span class="machine-status status-running">● RUNNING</span>
+                        <span class="machine-status status-warning">● WARNING</span>
+                        <span class="machine-status status-error">● ERROR</span>
+                    </div>
+                </div>
+                <div class="machine-grid" id="machinesGrid">
+                    <!-- Machines injectées par JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-2">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Température (°C) - Temps Réel</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="tempChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">RPM - Temps Réel</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="rpmChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Production Chart -->
+        <div class="grid grid-1">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Production (mètres) - Cumulé</div>
+                </div>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="productionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Table -->
+        <div class="grid grid-1">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">Historique des Mesures</div>
+                    <div class="timestamp" id="tableCount">0 entrées</div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Machine</th>
+                                <th>Atelier</th>
+                                <th>Status</th>
+                                <th>Température</th>
+                                <th>RPM</th>
+                                <th>Production</th>
+                                <th>Horodatage</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTable">
+                            <!-- Lignes injectées par JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =====================================================
+        // CHARGEMENT ROBUSTE DE SIGNALR
+        // =====================================================
+
+        function loadSignalR() {
+            return new Promise((resolve, reject) => {
+                // Vérifie si déjà chargé
+                if (typeof window.signalR !== 'undefined') {
+                    console.log('✅ SignalR déjà chargé');
+                    resolve(window.signalR);
+                    return;
+                }
+
+                // Essaye CDN
+                const cdnScript = document.createElement('script');
+                cdnScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js';
+                cdnScript.onload = () => {
+                    console.log('✅ SignalR chargé depuis CDN');
+                    resolve(window.signalR);
+                };
+                cdnScript.onerror = () => {
+                    console.warn('⚠️ CDN échoué, tentative locale...');
+                    // Fallback local
+                    const localScript = document.createElement('script');
+                    localScript.src = './signalr.min.js';
+                    localScript.onload = () => {
+                        console.log('✅ SignalR chargé localement');
+                        resolve(window.signalR);
+                    };
+                    localScript.onerror = () => {
+                        reject(new Error('Impossible de charger SignalR (CDN + local)'));
+                    };
+                    document.head.appendChild(localScript);
+                };
+                document.head.appendChild(cdnScript);
+            });
+        }
+
+        // =====================================================
+        // CONFIGURATION
+        // =====================================================
+        const CONFIG = {
+            // Mode simulation (true) ou connexion réelle SignalR (false)
+            SIMULATION_MODE: false,
+
+            // URL du Hub SignalR (votre config qui fonctionne : port 8080)
+            SIGNALR_URL: 'http://localhost:8080/monitoringHub',
+
+            // URL de l'API REST (si besoin)
+            API_URL: 'http://localhost:8080/api',
+
+            // Nombre max de points sur les graphiques
+            MAX_CHART_POINTS: 50,
+
+            // Nombre max d'entrées dans l'historique
+            MAX_HISTORY: 100
+        };
+
+        // =====================================================
+        // ÉTAT GLOBAL
+        // =====================================================
+        const state = {
+            machines: new Map(),        // Map<machineId, {lastData, history}>
+            history: [],                // Tableau des dernières mesures
+            charts: {},                 // Instances Chart.js
+            connection: null,           // Connexion SignalR
+            isConnected: false
+        };
+
+        // =====================================================
+        // SIMULATION DE DONNÉES (remplace SignalR pour les tests)
+        // =====================================================
+        class DataSimulator {
+            constructor() {
+                this.machines = [
+                    'USINE01-ATELIER01-MACHINE01',
+                    'USINE01-ATELIER01-MACHINE02',
+                    'USINE01-ATELIER02-MACHINE01',
+                    'USINE01-ATELIER02-MACHINE02',
+                    'USINE01-ATELIER02-MACHINE03'
+                ];
+                this.intervals = [];
+                this.baseValues = new Map();
+
+                this.machines.forEach(id => {
+                    this.baseValues.set(id, {
+                        rpm: 750 + Math.random() * 50,
+                        temp: 42 + Math.random() * 5,
+                        production: 12450 + Math.random() * 1000
+                    });
+                });
+            }
+
+            start() {
+                console.log('🎮 Mode simulation activé');
+
+                this.machines.forEach(machineId => {
+                    const interval = setInterval(() => {
+                        const base = this.baseValues.get(machineId);
+
+                        // Variations réalistes
+                        base.rpm += (Math.random() - 0.5) * 10;
+                        base.rpm = Math.max(700, Math.min(800, base.rpm));
+
+                        base.temp += (Math.random() - 0.5) * 0.5;
+                        base.temp = Math.max(40, Math.min(48, base.temp));
+
+                        base.production += 0.15 + Math.random() * 0.2;
+
+                        // Occasionnellement WARNING/ERROR (2% de chance)
+                        let status = 'RUNNING';
+                        if (Math.random() < 0.02) {
+                            status = base.temp > 46 ? 'ERROR' : 'WARNING';
+                        }
+
+                        const data = {
+                            machine: machineId,
+                            temperature: parseFloat(base.temp.toFixed(1)),
+                            rpm: Math.round(base.rpm),
+                            production: parseFloat(base.production.toFixed(2)),
+                            etat: status,
+                            time: new Date().toLocaleTimeString('fr-FR')
+                        };
+
+                        handleNewData(data);
+                    }, 1000 + Math.random() * 500); // Intervalle légèrement variable
+
+                    this.intervals.push(interval);
+                });
+            }
+
+            stop() {
+                this.intervals.forEach(clearInterval);
+                this.intervals = [];
+            }
+        }
+
+        // =====================================================
+        // GESTION DES DONNÉES
+        // =====================================================
+        function handleNewData(data) {
+            const normalized = {
+                machine: data.machine || data.Machine,
+                temperature: data.temperature || data.Temperature,
+                rpm: data.rpm || data.Rpm,
+                production: data.production || data.Production,
+                etat: data.etat || data.Etat || data.Status,
+                time: data.time || data.Time || new Date().toLocaleTimeString('fr-FR')
+            };
+
+            const machineId = normalized.machine;
+
+            // Met à jour l'état de la machine
+            if (!state.machines.has(machineId)) {
+                state.machines.set(machineId, {
+                    id: machineId,
+                    history: [],
+                    lastData: null
+                });
+            }
+
+            const machine = state.machines.get(machineId);
+            machine.lastData = data;
+            machine.history.push(data);
+
+            // Garde seulement les MAX_CHART_POINTS dernières valeurs
+            if (machine.history.length > CONFIG.MAX_CHART_POINTS) {
+                machine.history.shift();
+            }
+
+            // Ajoute à l'historique global
+            state.history.unshift({ ...data, receivedAt: new Date() });
+            if (state.history.length > CONFIG.MAX_HISTORY) {
+                state.history.pop();
+            }
+
+            // Met à jour l'UI
+            updateMachineCard(machineId, data);
+            updateKPIs();
+            updateCharts();
+            updateHistoryTable();
+            updateTimestamp();
+
+            // Vérifie les alertes
+            checkAlerts(data);
+        }
+
+        // =====================================================
+        // UI - MISE À JOUR
+        // =====================================================
+        function updateMachineCard(machineId, data) {
+            const grid = document.getElementById('machinesGrid');
+            let card = document.getElementById(`machine-${machineId}`);
+
+            // Met à jour les options de filtres quand une nouvelle machine arrive
+            updateFilterOptions();
+
+            const statusClass = data.etat === 'RUNNING' ? 'running' : 
+                               data.etat === 'WARNING' ? 'warning' : 'error';
+            const statusBadgeClass = `status-${data.etat.toLowerCase()}`;
+
+            const atelier = machineId.split('-')[1];
+
+            const cardHTML = `
+                <div class="machine-card ${statusClass}" id="machine-${machineId}">
+                    <div class="machine-header">
+                        <div>
+                            <div class="machine-id">${machineId}</div>
+                            <div style="margin-top: 0.25rem;">
+                                <span class="machine-atelier">${atelier}</span>
+                            </div>
+                        </div>
+                        <span class="machine-status ${statusBadgeClass}">
+                            ${data.etat === 'RUNNING' ? '●' : data.etat === 'WARNING' ? '▲' : '■'}
+                            ${data.etat}
+                        </span>
+                    </div>
+                    <div class="machine-metrics">
+                        <div class="metric">
+                            <div class="metric-value" style="color: ${data.temperature > 46 ? '#dc2626' : data.temperature > 44 ? '#f59e0b' : '#1e293b'}">
+                                ${data.temperature}
+                            </div>
+                            <div class="metric-label">Température</div>
+                            <div class="metric-unit">°C</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${data.rpm}</div>
+                            <div class="metric-label">RPM</div>
+                            <div class="metric-unit">t/min</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value">${data.production.toFixed(1)}</div>
+                            <div class="metric-label">Production</div>
+                            <div class="metric-unit">mètres</div>
+                        </div>
+                    </div>
+                    <div class="timestamp" style="text-align: right; margin-top: 0.75rem;">
+                        ${data.time}
+                    </div>
+                </div>
+            `;
+
+            if (card) {
+                card.outerHTML = cardHTML;
+            } else {
+                grid.insertAdjacentHTML('beforeend', cardHTML);
+            }
+        }
+
+        function updateKPIs() {
+            updateFilterOptions();
+            const machines = Array.from(state.machines.values());
+            const activeMachines = machines.filter(m => m.lastData?.etat === 'RUNNING').length;
+
+            let totalTemp = 0, totalRpm = 0, totalProd = 0, count = 0;
+
+            machines.forEach(m => {
+                if (m.lastData) {
+                    totalTemp += m.lastData.temperature;
+                    totalRpm += m.lastData.rpm;
+                    totalProd += m.lastData.production;
+                    count++;
+                }
+            });
+
+            document.getElementById('totalMachines').textContent = activeMachines;
+            document.getElementById('totalMachinesAll').textContent = machines.length;
+            document.getElementById('avgTemp').textContent = count > 0 ? (totalTemp / count).toFixed(1) : '--';
+            document.getElementById('avgRpm').textContent = count > 0 ? Math.round(totalRpm / count) : '--';
+            document.getElementById('totalProduction').textContent = totalProd > 0 ? totalProd.toFixed(0) : '--';
+        }
+
+        function updateTimestamp() {
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('fr-FR');
+        }
+
+        function checkAlerts(data) {
+            const banner = document.getElementById('alertBanner');
+            const title = document.getElementById('alertTitle');
+            const message = document.getElementById('alertMessage');
+
+            if (data.etat === 'ERROR') {
+                banner.classList.add('show', 'error');
+                title.textContent = 'ALERTE CRITIQUE';
+                message.textContent = `${data.machine} - Température: ${data.temperature}°C | Arrêt immédiat recommandé`;
+
+                setTimeout(() => banner.classList.remove('show', 'error'), 5000);
+            } else if (data.etat === 'WARNING') {
+                banner.classList.add('show');
+                banner.classList.remove('error');
+                title.textContent = 'Attention';
+                message.textContent = `${data.machine} - Température élevée: ${data.temperature}°C`;
+
+                setTimeout(() => banner.classList.remove('show'), 3000);
+            }
+        }
+
+        function updateHistoryTable() {
+            const tbody = document.getElementById('historyTable');
+            const recent = state.history.slice(0, 20);
+
+            tbody.innerHTML = recent.map(entry => {
+                const atelier = entry.machine.split('-')[1];
+                const statusClass = entry.etat === 'RUNNING' ? 'status-running' : 
+                                   entry.etat === 'WARNING' ? 'status-warning' : 'status-error';
+
+                return `
+                    <tr>
+                        <td><strong>${entry.machine}</strong></td>
+                        <td><span class="machine-atelier">${atelier}</span></td>
+                        <td><span class="machine-status ${statusClass}">${entry.etat}</span></td>
+                        <td>${entry.temperature}°C</td>
+                        <td>${entry.rpm}</td>
+                        <td>${entry.production.toFixed(2)} m</td>
+                        <td class="timestamp">${entry.time}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('tableCount').textContent = `${state.history.length} entrées`;
+        }
+
+        // =====================================================
+        // CHARTS
+        // =====================================================
+        function initCharts() {
+            const commonOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 300 },
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { maxTicksLimit: 10, font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: '#e2e8f0' },
+                        ticks: { font: { size: 10 } }
+                    }
+                }
+            };
+
+            // Chart Température
+            state.charts.temp = new Chart(document.getElementById('tempChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    plugins: {
+                        ...commonOptions.plugins,
+                        title: { display: false }
+                    }
+                }
+            });
+
+            // Chart RPM
+            state.charts.rpm = new Chart(document.getElementById('rpmChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: commonOptions
+            });
+
+            // Chart Production
+            state.charts.production = new Chart(document.getElementById('productionChart'), {
+                type: 'bar',
+                data: { labels: [], datasets: [] },
+                options: {
+                    ...commonOptions,
+                    scales: {
+                        ...commonOptions.scales,
+                        y: { ...commonOptions.scales.y, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            const machines = Array.from(state.machines.values());
+            const colors = ['#2563eb', '#dc2626', '#f59e0b', '#16a34a', '#8b5cf6'];
+
+            // Prépare les datasets
+            const tempDatasets = [];
+            const rpmDatasets = [];
+            const prodData = [];
+            const prodLabels = [];
+
+            machines.forEach((machine, index) => {
+                const color = colors[index % colors.length];
+                const history = machine.history;
+
+                if (history.length === 0) return;
+
+                const labels = history.map((_, i) => i);
+
+                tempDatasets.push({
+                    label: machine.id,
+                    data: history.map(h => h.temperature),
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    tension: 0.4,
+                    fill: false,
+                    pointRadius: 0
+                });
+
+                rpmDatasets.push({
+                    label: machine.id,
+                    data: history.map(h => h.rpm),
+                    borderColor: color,
+                    backgroundColor: color + '20',
+                    tension: 0.4,
+                    fill: false,
+                    pointRadius: 0
+                });
+
+                prodLabels.push(machine.id.split('-').pop());
+                prodData.push(machine.lastData?.production || 0);
+            });
+
+            // Update Temp Chart
+            state.charts.temp.data.labels = machines[0]?.history.map((_, i) => i) || [];
+            state.charts.temp.data.datasets = tempDatasets;
+            state.charts.temp.update('none');
+
+            // Update RPM Chart
+            state.charts.rpm.data.labels = machines[0]?.history.map((_, i) => i) || [];
+            state.charts.rpm.data.datasets = rpmDatasets;
+            state.charts.rpm.update('none');
+
+            // Update Production Chart
+            state.charts.production.data.labels = prodLabels;
+            state.charts.production.data.datasets = [{
+                label: 'Production (m)',
+                data: prodData,
+                backgroundColor: colors.slice(0, prodData.length),
+                borderRadius: 6
+            }];
+            state.charts.production.update('none');
+        }
+
+        // =====================================================
+        // CONNEXION SIGNALR (mode production)
+        // =====================================================
+        async function connectSignalR() {
+            console.log('🔌 === CONNEXION SIGNALR ===');
+            console.log('   URL cible :', CONFIG.SIGNALR_URL);
+            console.log('   SignalR version :', window.signalR?.VERSION || 'inconnue');
+
+            // DIAGNOSTIC 1 : Test HTTP simple avant SignalR
+            try {
+                console.log('   Test HTTP vers le serveur...');
+                const testResponse = await fetch(CONFIG.SIGNALR_URL.replace('/monitoringHub', '/api/health'), { 
+                    method: 'GET',
+                    mode: 'no-cors'  // Pour éviter erreur CORS temporairement
+                });
+                console.log('   ✅ Serveur HTTP accessible (status:', testResponse.status, ')');
+            } catch (e) {
+                console.warn(`   ⚠️ Serveur HTTP non accessible :`, e.message);
+                console.warn(`   Cela peut être normal si le endpoint /api/health n'existe pas`);
+            }
+
+            try {
+                const { HubConnectionBuilder, LogLevel, HttpTransportType } = window.signalR;
+
+                console.log('   Création de la connexion...');
+
+                state.connection = new HubConnectionBuilder()
+                    .withUrl(CONFIG.SIGNALR_URL, {
+                        // Configuration qui fonctionne chez vous (skipNegotiation + WebSockets)
+                        skipNegotiation: true,
+                        transport: HttpTransportType.WebSockets
+                    })
+                    .withAutomaticReconnect([2000, 5000, 10000, 30000])
+                    .configureLogging(LogLevel.Warning)
+                    .build();
+
+                // Événements de connexion
+                state.connection.onreconnecting((error) => {
+                    console.warn('🔄 SignalR reconnexion...', error);
+                    document.getElementById('connectionText').textContent = 'Reconnexion...';
+                    document.getElementById('connectionStatus').className = 'status-badge status-warning';
+                });
+
+                state.connection.onreconnected((connectionId) => {
+                    console.log('✅ SignalR reconnecté :', connectionId);
+                    document.getElementById('connectionText').textContent = 'Connecté au serveur';
+                    document.getElementById('connectionStatus').className = 'status-badge status-online';
+                });
+
+                state.connection.onclose((error) => {
+                    console.error('❌ SignalR fermé :', error);
+                    document.getElementById('connectionText').textContent = 'Déconnecté';
+                    document.getElementById('connectionStatus').className = 'status-badge status-offline';
+                });
+
+                // Événement ReceiveData
+                state.connection.on('ReceiveData', (data) => {
+                    console.log('📡 Événement ReceiveData reçu !');
+                    console.log('   Données :', data);
+                    handleNewData(data);
+                });
+
+                // Démarrage
+                console.log('   Démarrage de la connexion...');
+                await state.connection.start();
+                state.isConnected = true;
+
+                document.getElementById('connectionText').textContent = 'Connecté au serveur';
+                document.getElementById('connectionStatus').className = 'status-badge status-online';
+
+                console.log('✅ SignalR CONNECTÉ avec succès !');
+                console.log('   Connection ID :', state.connection.connectionId);
+
+            } catch (error) {
+                console.error('❌ === ERREUR SIGNALR ===');
+                console.error('   Type :', error.name);
+                console.error('   Message :', error.message);
+                console.error('   Stack :', error.stack);
+
+                // Diagnostic de l'erreur
+                let diagnostic = '';
+                if (error.message.includes('fetch')) {
+                    diagnostic = `Problème de fetch - Vérifiez :\n` +
+                                `1. Le serveur est bien démarré sur ` + CONFIG.SIGNALR_URL + `\n` +
+                                `2. CORS est configuré côté serveur (AllowAnyOrigin)\n` +
+                                `3. Le firewall autorise le port 5000\n` +
+                                `4. L'URL est correcte (http://IP:5000/monitoringHub)`;
+                } else if (error.message.includes('WebSocket')) {
+                    diagnostic = `Problème WebSocket - Le serveur ne supporte peut-être pas WS.\n` +
+                                `Essayez avec LongPolling en ajoutant dans .withUrl() :\n` +
+                                `{ transport: signalR.HttpTransportType.LongPolling }`;
+                } else if (error.message.includes('404')) {
+                    diagnostic = `Hub non trouvé (404) - Vérifiez que le hub est bien mappé :\n` +
+                                `app.MapHub<<MonitoringHub>("/monitoringHub");`;
+                } else {
+                    diagnostic = `Erreur inconnue - Vérifiez la console serveur C#`;
+                }
+
+                document.getElementById('connectionText').textContent = 'Erreur connexion';
+                document.getElementById('connectionStatus').className = 'status-badge status-offline';
+
+                console.error('\n🔍 DIAGNOSTIC :');
+                console.error(diagnostic);
+
+                alert('ERREUR SignalR : ' + error.message + '\n\n' + diagnostic);
+
+                throw error;  // Remonte l'erreur pour le fallback
+            }
+        }
+
+        // =====================================================
+        // DÉMARRAGE
+        // =====================================================
+        // =====================================================
+        // FILTRES
+        // =====================================================
+        const filters = {
+            usine: '',
+            atelier: '',
+            machine: ''
+        };
+
+        function extractParts(machineId) {
+            // Format : USINE01-ATELIER01-MACHINE01
+            const parts = machineId.split('-');
+            return {
+                usine: parts[0] || '',
+                atelier: parts[1] || '',
+                machine: parts[2] || machineId
+            };
+        }
+
+        function updateFilterOptions() {
+            const machines = Array.from(state.machines.values());
+            const usines = new Set();
+            const ateliers = new Set();
+            const machineNames = new Set();
+
+            machines.forEach(m => {
+                if (m.lastData) {
+                    const parts = extractParts(m.lastData.machine || m.lastData.Machine || m.id);
+                    usines.add(parts.usine);
+                    ateliers.add(parts.atelier);
+                    machineNames.add(parts.machine);
+                }
+            });
+
+            updateSelect('filterUsine', usines, filters.usine);
+            updateSelect('filterAtelier', ateliers, filters.atelier);
+            updateSelect('filterMachine', machineNames, filters.machine);
+        }
+
+        function updateSelect(id, values, currentValue) {
+            const select = document.getElementById(id);
+            const options = Array.from(values).sort();
+
+            // Garde la première option ("Tous...")
+            const firstOption = select.options[0];
+            select.innerHTML = '';
+            select.appendChild(firstOption);
+
+            options.forEach(value => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = value;
+                if (value === currentValue) option.selected = true;
+                select.appendChild(option);
+            });
+        }
+
+        function applyFilters() {
+            const machineCards = document.querySelectorAll('.machine-card');
+            let visible = 0;
+            let total = machineCards.length;
+
+            machineCards.forEach(card => {
+                const machineId = card.id.replace('machine-', '');
+                //alert('Filtrage de la machine : ' + machineId);
+                const parts = extractParts(machineId);
+alert(card.id + ' => usine: ' + parts.usine + ', atelier: ' + parts.atelier + ', machine: ' + parts.machine);
+                const matchUsine = !filters.usine || parts.usine === filters.usine;
+                const matchAtelier = !filters.atelier || parts.atelier === filters.atelier;
+                const matchMachine = !filters.machine || parts.machine === filters.machine;
+
+                if (matchUsine && matchAtelier && matchMachine) {
+                    card.classList.remove('hidden');
+                    visible++;
+                } else {
+                    card.classList.add('hidden');
+                }
+            });
+
+            // Met à jour les compteurs
+            document.getElementById('visibleCount').textContent = visible;
+            document.getElementById('totalCount').textContent = total;
+
+            // Met à jour les badges de filtres actifs
+            updateActiveFilters();
+
+            // Met à jour les KPIs en fonction des filtres
+            updateFilteredKPIs();
+
+            // Met à jour les graphiques
+            updateFilteredCharts();
+        }
+
+        function updateActiveFilters() {
+            const container = document.getElementById('activeFilters');
+            const clearBtn = document.getElementById('clearFilters');
+            container.innerHTML = '';
+
+            let hasFilters = false;
+
+            if (filters.usine) {
+                hasFilters = true;
+                container.appendChild(createFilterBadge('Usine', filters.usine, () => {
+                    filters.usine = '';
+                    document.getElementById('filterUsine').value = '';
+                    applyFilters();
+                }));
+            }
+            if (filters.atelier) {
+                hasFilters = true;
+                container.appendChild(createFilterBadge('Atelier', filters.atelier, () => {
+                    filters.atelier = '';
+                    document.getElementById('filterAtelier').value = '';
+                    applyFilters();
+                }));
+            }
+            if (filters.machine) {
+                hasFilters = true;
+                container.appendChild(createFilterBadge('Machine', filters.machine, () => {
+                    filters.machine = '';
+                    document.getElementById('filterMachine').value = '';
+                    applyFilters();
+                }));
+            }
+
+            clearBtn.style.display = hasFilters ? 'block' : 'none';
+        }
+
+        function createFilterBadge(type, value, onRemove) {
+            const badge = document.createElement('span');
+            badge.className = 'filter-badge';
+            badge.innerHTML = `${type}: ${value} <span class="remove">×</span>`;
+            badge.onclick = onRemove;
+            return badge;
+        }
+
+        function updateFilteredKPIs() {
+            const machines = Array.from(state.machines.values()).filter(m => {
+                if (!m.lastData) return false;
+                const parts = extractParts(m.lastData.machine || m.lastData.Machine || m.id);
+                return (!filters.usine || parts.usine === filters.usine) &&
+                       (!filters.atelier || parts.atelier === filters.atelier) &&
+                       (!filters.machine || parts.machine === filters.machine);
+            });
+
+            const activeMachines = machines.filter(m => {
+                const status = m.lastData?.etat || m.lastData?.Etat || 'RUNNING';
+                return status === 'RUNNING';
+            }).length;
+
+            let totalTemp = 0, totalRpm = 0, totalProd = 0, count = 0;
+
+            machines.forEach(m => {
+                if (m.lastData) {
+                    totalTemp += m.lastData.temperature || m.lastData.Temperature || 0;
+                    totalRpm += m.lastData.rpm || m.lastData.Rpm || 0;
+                    totalProd += m.lastData.production || m.lastData.Production || 0;
+                    count++;
+                }
+            });
+
+            document.getElementById('totalMachines').textContent = activeMachines;
+            document.getElementById('totalMachinesAll').textContent = machines.length;
+            document.getElementById('avgTemp').textContent = count > 0 ? (totalTemp / count).toFixed(1) : '--';
+            document.getElementById('avgRpm').textContent = count > 0 ? Math.round(totalRpm / count) : '--';
+            document.getElementById('totalProduction').textContent = totalProd > 0 ? totalProd.toFixed(0) : '--';
+        }
+
+        function updateFilteredCharts() {
+            // Les graphiques sont mis à jour via updateCharts() qui utilise state.machines
+            // On pourrait filtrer  aussi, mais pour l'instant on garde tous les points
+            updateCharts();
+        }
+
+        // Écouteurs d'événements filtres
+        function setupFilters() {
+            document.getElementById('filterUsine').addEventListener('change', (e) => {
+                filters.usine = e.target.value;
+                applyFilters();
+            });
+
+            document.getElementById('filterAtelier').addEventListener('change', (e) => {
+                filters.atelier = e.target.value;
+                applyFilters();
+            });
+
+            document.getElementById('filterMachine').addEventListener('change', (e) => {
+                filters.machine = e.target.value;
+                applyFilters();
+            });
+
+            document.getElementById('clearFilters').addEventListener('click', () => {
+                filters.usine = '';
+                filters.atelier = '';
+                filters.machine = '';
+                document.getElementById('filterUsine').value = '';
+                document.getElementById('filterAtelier').value = '';
+                document.getElementById('filterMachine').value = '';
+                applyFilters();
+            });
+        }
+
+        // =====================================================
+        // DÉMARRAGE
+        // =====================================================
+        document.addEventListener('DOMContentLoaded', async () => {
+            initCharts();
+            setupFilters();
+
+            if (CONFIG.SIMULATION_MODE) {
+                const simulator = new DataSimulator();
+                simulator.start();
+                console.log('🚀 bAcTechFlow Dashboard démarré (Mode Simulation)');
+            } else {
+                try {
+                    await loadSignalR();
+                    console.log('✅ SignalR prêt, connexion...');
+                    await connectSignalR();
+                    console.log('🚀 bAcTechFlow Dashboard démarré (Mode SignalR)');
+                } catch (err) {
+                    console.error('❌ Erreur chargement SignalR:', err);
+                    document.getElementById('connectionText').textContent = 'SignalR non disponible';
+                    document.getElementById('connectionStatus').className = 'status-badge status-offline';
+
+                    // Fallback : démarre en mode simulation
+                    console.log('⚠️ Fallback mode simulation');
+                    const simulator = new DataSimulator();
+                    simulator.start();
+                }
+            }
+        });
+    </script>
+</body>
+</html>

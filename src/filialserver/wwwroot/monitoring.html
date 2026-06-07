@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>bAcTechFlow - Monitoring</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Exo+2:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        body {
+            background: #0a0e1a;
+            color: #e0e8ff;
+            font-family: 'Exo 2',sans-serif;
+            min-height: 100vh
+        }
+
+        .mono {
+            font-family: 'Share Tech Mono',monospace
+        }
+
+        nav {
+            background: linear-gradient(90deg,#0d1b3e,#0a0e1a);
+            border-bottom: 1px solid #1e3a6e;
+            padding: 0 2rem;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .nav-logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #1a3a7e;
+            border: 1px solid #2d5fbd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 13px;
+            color: #7eb3ff;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #c8d8ff;
+            letter-spacing: 1px
+        }
+
+        .nav-sub {
+            font-size: 11px;
+            color: #4a6fa5;
+            font-family: 'Share Tech Mono',monospace
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #0d1b3e;
+            border: 1px solid #1e3a6e;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 12px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #2a3a5e;
+            transition: background .3s
+        }
+
+            .dot.connected {
+                background: #22c55e;
+                box-shadow: 0 0 6px #22c55e88
+            }
+
+            .dot.error {
+                background: #ef4444
+            }
+
+            .dot.connecting {
+                background: #f59e0b;
+                animation: blink 1s infinite
+            }
+
+        @keyframes blink {
+            0%,100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .3
+            }
+        }
+
+        #statusText {
+            color: #8a9fd4;
+            font-family: 'Share Tech Mono',monospace
+        }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(4,1fr);
+            gap: 1px;
+            background: #1e3a6e;
+            border-bottom: 1px solid #1e3a6e;
+        }
+
+        .stat-cell {
+            background: #0a0e1a;
+            padding: 12px 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #4a6fa5;
+            text-transform: uppercase;
+            letter-spacing: .8px
+        }
+
+        .stat-val {
+            font-size: 22px;
+            font-weight: 700;
+            color: #7eb3ff;
+            font-family: 'Share Tech Mono',monospace
+        }
+
+        .main {
+            padding: 1.5rem 2rem
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 12px;
+            color: #4a6fa5;
+            text-transform: uppercase;
+            letter-spacing: 1.2px
+        }
+
+        .last-update {
+            font-size: 11px;
+            color: #2d4a7a;
+            font-family: 'Share Tech Mono',monospace
+        }
+
+        #machineGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill,minmax(260px,1fr));
+            gap: 12px;
+        }
+
+        .machine-card {
+            background: #0d1420;
+            border: 1px solid #1e3a6e;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: border-color .3s;
+            animation: fadeIn .4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .machine-card:hover {
+            border-color: #2d5fbd
+        }
+
+        .machine-card.alert {
+            border-color: #ef4444;
+            box-shadow: 0 0 12px #ef444422
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: #0a1128;
+            border-bottom: 1px solid #1e3a6e;
+        }
+
+        .machine-id {
+            font-size: 11px;
+            font-weight: 600;
+            color: #7eb3ff;
+            font-family: 'Share Tech Mono',monospace;
+            letter-spacing: .5px
+        }
+
+        .state-badge {
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            background: #14311a;
+            color: #22c55e;
+            border: 1px solid #22c55e44;
+        }
+
+            .state-badge.stopped {
+                background: #3a1414;
+                color: #ef4444;
+                border-color: #ef444444
+            }
+
+        .card-body {
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px
+        }
+
+        .metric-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between
+        }
+
+        .metric-label {
+            font-size: 11px;
+            color: #4a6fa5;
+            display: flex;
+            align-items: center;
+            gap: 5px
+        }
+
+            .metric-label i {
+                font-size: 13px
+            }
+
+        .metric-val {
+            font-size: 16px;
+            font-weight: 600;
+            font-family: 'Share Tech Mono',monospace;
+            color: #c8d8ff
+        }
+
+            .metric-val.warn {
+                color: #f59e0b
+            }
+
+            .metric-val.danger {
+                color: #ef4444
+            }
+
+        .bar-wrap {
+            background: #0a1128;
+            border-radius: 3px;
+            height: 3px;
+            overflow: hidden;
+            margin-top: 2px
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width .5s ease,background .3s
+        }
+
+        .card-footer {
+            padding: 6px 14px;
+            background: #0a1128;
+            border-top: 1px solid #1e3a6e;
+            font-size: 10px;
+            color: #2d4a7a;
+            font-family: 'Share Tech Mono',monospace;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .empty-state {
+            grid-column: 1/-1;
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #2d4a7a;
+        }
+
+            .empty-state i {
+                font-size: 48px;
+                margin-bottom: 1rem;
+                display: block
+            }
+
+            .empty-state p {
+                font-size: 13px;
+                line-height: 1.8
+            }
+    </style>
+</head>
+<body>
+    <nav>
+        <div class="nav-brand">
+            <div class="nav-logo">bAc</div>
+            <div>
+                <div class="nav-title">bAcTechFlow</div>
+                <div class="nav-sub">MONITORING TEMPS RÉEL — XEON SERVER</div>
+            </div>
+        </div>
+        <div class="status-pill">
+            <div class="dot connecting" id="dot"></div>
+            <span id="statusText">Connexion...</span>
+        </div>
+    </nav>
+
+    <div class="stats-bar">
+        <div class="stat-cell">
+            <span class="stat-label">Machines actives</span>
+            <span class="stat-val" id="statMachines">0</span>
+        </div>
+        <div class="stat-cell">
+            <span class="stat-label">Alertes temp.</span>
+            <span class="stat-val" id="statAlerts" style="color:#ef4444">0</span>
+        </div>
+        <div class="stat-cell">
+            <span class="stat-label">Messages reçus</span>
+            <span class="stat-val" id="statMessages">0</span>
+        </div>
+        <div class="stat-cell">
+            <span class="stat-label">Dernière activité</span>
+            <span class="stat-val" id="statTime" style="font-size:14px">--:--:--</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="section-header">
+            <span class="section-title"><i class="ti ti-cpu"></i> Machines industrielles</span>
+            <span class="last-update mono" id="lastUpdate">En attente de données...</span>
+        </div>
+        <div id="machineGrid">
+            <div class="empty-state">
+                <i class="ti ti-wifi"></i>
+                <p>
+                    En attente de connexion au FilialeServer...<br>
+                    Vérifiez que le serveur Xeon tourne sur le port configuré.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>const machines = {};
+let totalMessages = 0;
+
+const dot = document.getElementById('dot');
+const statusText = document.getElementById('statusText');
+
+// =====================================================
+// CONFIGURATION : Modifiez uniquement cette ligne
+// Mettez l'IP et le port de votre serveur Xeon ici
+// const XEON_URL = "http://192.168.1.110:8080/monitoringHub";
+
+const XEON_URL = "http://localhost:8080/monitoringHub";
+// =====================================================
+
+const connection = new signalR.HubConnectionBuilder()
+  .withUrl(XEON_URL, {
+    skipNegotiation: true,
+    transport: signalR.HttpTransportType.WebSockets
+  })
+  .configureLogging(signalR.LogLevel.Warning)
+  .withAutomaticReconnect([2000, 5000, 10000, 30000])
+  .build();
+
+connection.onreconnecting(() => {
+  dot.className = 'dot connecting';
+  statusText.textContent = 'Reconnexion...';
+});
+connection.onreconnected(() => {
+  dot.className = 'dot connected';
+  statusText.textContent = 'Connecté au Xeon';
+});
+connection.onclose(() => {
+  dot.className = 'dot error';
+  statusText.textContent = 'Déconnecté';
+});
+
+connection.on("ReceiveData", (data) => {
+  if (!data || !data.machine) {
+    console.warn("Données invalides reçues :", data);
+    return;
+  }
+  totalMessages++;
+  document.getElementById('statMessages').textContent = totalMessages;
+  document.getElementById('statTime').textContent = data.time || '--:--:--';
+  document.getElementById('lastUpdate').textContent = 'Mise à jour : ' + data.time;
+  updateMachine(data);
+});
+
+function updateMachine(data) {
+    const id = data.machine;
+    const grid = document.getElementById('machineGrid');
+
+    const emptyState = grid.querySelector('.empty-state');
+    if (emptyState) emptyState.remove();
+
+    // 1. OBTENTION DE LA CARTE (Existante ou Nouvelle)
+    let card = document.getElementById('card-' + id);
+
+    if (!machines[id] || !card) {
+        machines[id] = true;
+
+        // On génère la carte
+        const newCard = buildCard(id);
+        // On l'ajoute à l'écran
+        grid.appendChild(newCard);
+        // On stocke directement sa référence mémoire pour ne pas dépendre du délai du DOM !
+        card = newCard;
+
+        document.getElementById('statMachines').textContent = Object.keys(machines).length;
+    }
+
+    // 2. EXTRACTION DES PARAMÈTRES
+    const temperature = parseFloat(data.temperature) || 0;
+    const rpm = parseFloat(data.rpm) || 0;
+    const prod = parseFloat(data.production) || 0;
+    const etat = data.etat || 'RUNNING';
+    const isAlert = temperature > 46;
+
+    // Sécurité ultime au cas où
+    if (!card) return;
+
+    // 3. MISE À JOUR DYNAMIQUE ET SÉCURISÉE DES BALISES
+    card.classList.toggle('alert', isAlert);
+
+    const badge = card.querySelector('.state-badge');
+    if (badge) {
+        badge.textContent = etat;
+        badge.className = 'state-badge' + (etat !== 'RUNNING' ? ' stopped' : '');
+    }
+
+    const tempEl = document.getElementById('txt-temp-' + id);
+    if (tempEl) {
+        tempEl.textContent = temperature.toFixed(1) + ' °C';
+        tempEl.className = 'metric-val' + (isAlert ? ' danger' : temperature > 44 ? ' warn' : '');
+    }
+
+    const rpmEl = card.querySelector('.val-rpm');
+    if (rpmEl) rpmEl.textContent = rpm + ' RPM';
+
+    const prodEl = card.querySelector('.val-prod');
+    if (prodEl) prodEl.textContent = prod.toFixed(1) + ' m';
+
+    const footerSpan = card.querySelector('.card-footer span');
+    if (footerSpan) footerSpan.textContent = 'Dernière MAJ : ' + data.time;
+
+    // 4. JAUGES GRAPHIQUES (PROGRESS BARS)
+    const tempPct = Math.min(100, Math.max(0, ((temperature - 40) / 10) * 100));
+    const rpmPct = Math.min(100, Math.max(0, ((rpm - 740) / 40) * 100));
+
+    const barTemp = card.querySelector('.bar-temp');
+    if (barTemp) {
+        barTemp.style.width = tempPct + '%';
+        barTemp.style.background = isAlert ? '#ef4444' : temperature > 44 ? '#f59e0b' : '#22c55e';
+    }
+
+    const barRpm = card.querySelector('.bar-rpm');
+    if (barRpm) {
+        barRpm.style.width = rpmPct + '%';
+    }
+
+    // 5. COMPTEUR GÉNÉRAL DES ALERTES
+    let alerts = document.querySelectorAll('.machine-card.alert').length;
+    document.getElementById('statAlerts').textContent = alerts;
+}
+
+function buildCard(id) {
+  const div = document.createElement('div');
+  div.className = 'machine-card';
+  div.id = 'card-' + id;
+  div.innerHTML =
+    '<div class="card-header">' +
+      '<span class="machine-id">' + id + '</span>' +
+      '<span class="state-badge">RUNNING</span>' +
+    '</div>' +
+    '<div class="card-body">' +
+      '<div>' +
+        '<div class="metric-row">' +
+          '<span class="metric-label"><i class="ti ti-temperature"></i> Température</span>' +
+          '<span class="metric-val" id="txt-temp-' + id + '">-- °C</span>' +
+        '</div>' +
+        '<div class="bar-wrap"><div class="bar-fill bar-temp" style="width:0%"></div></div>' +
+      '</div>' +
+      '<div>' +
+        '<div class="metric-row">' +
+          '<span class="metric-label"><i class="ti ti-propeller"></i> Vitesse moteur</span>' +
+          '<span class="metric-val val-rpm">-- RPM</span>' +
+        '</div>' +
+        '<div class="bar-wrap"><div class="bar-fill bar-rpm" style="width:0%;background:#3b82f6"></div></div>' +
+      '</div>' +
+      '<div class="metric-row">' +
+        '<span class="metric-label"><i class="ti ti-ruler-measure"></i> Production totale</span>' +
+        '<span class="metric-val val-prod">-- m</span>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card-footer"><i class="ti ti-clock"></i><span>En attente...</span></div>';
+  return div;
+}
+
+connection.start()
+  .then(() => {
+    dot.className = 'dot connected';
+    statusText.textContent = 'Connecté au Xeon';
+  })
+  .catch(err => {
+    dot.className = 'dot error';
+    statusText.textContent = 'Erreur de connexion';
+    console.error('SignalR erreur :', err);
+  });</script>
+</body>
+</html>

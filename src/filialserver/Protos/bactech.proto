@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option csharp_namespace = "bAcTechFlow.Shared.Protos";
+package monitoring;
+service MonitoringStation {
+  rpc EnvoyerMesure (MesureRequest) returns (MesureResponse);
+}
+
+message MesureRequest {
+	string Machine = 1; /* Identifiant de la station de mesure. le 1 c'est un numéro de tag. c'est le numéro envoyé au lieu de nom
+						 => même si on change le nom de la variable, le numéro de tag reste le même pour assurer la compatibilité. */
+	double valeurT = 2; /* valeurT est associée à la température du moteur en °C */
+	double valeurR = 3; /* Les numéros de tag sont utilisés pour identifier de manière unique chaque champ dans un message Protobuf. 
+						 Ils sont essentiels pour la sérialisation et la désérialisation des messages, 
+						 permettant aux systèmes de communiquer efficacement même si les noms des champs changent au fil du temps.
+						 valeurR est associée à la vitesse du moteur en tours par minute */
+	double valeurP = 4; /* valeurP est associée à la production en mètres */
+	string Etat = 5; /* Etat peut être "Normal", "Alerte" ou "Critique" en fonction des seuils définis pour les mesures. */
+}
+
+message MesureResponse {
+  bool succes = 30;
+  string message = 31;
+}

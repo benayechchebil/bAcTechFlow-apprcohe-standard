@@ -1,0 +1,29 @@
+{
+    "xeon": {
+        "url": "http://192.168.1.200:8080/api/telemetry",
+        "healthUrl": "http://192.168.1.200:8080/api/health",
+        "timeoutMs": 5000
+    },
+    "mqtt": {
+        "broker": "mqtt://localhost:1883",
+        "topic": "bAcTechFlow-DataCenter/telemetry"
+    },
+    "localDb": {
+        "filename": "./gateway_edge_local.db",
+        "maxRetries": 5,
+        "cleanupDays": 7,
+        "batchSize": 50
+    },
+    "intervals": {
+        "healthCheckMs": 30000,
+        "syncMs": 60000
+    },
+    "httpServer": {
+        "port": 8090,
+        "enabled": true
+    },
+    "alerts": {
+        "mqttTopic": "bAcTechFlow-DataCenter/alerts",
+        "enabled": true
+    }
+}
